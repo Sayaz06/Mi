@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<meta name="theme-color" content="#4f46e5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body { font-family: 'Inter', sans-serif; background:#f0f4f8; min-height:100vh; }
+.editable { cursor:pointer; }
+.editable:focus { outline:none; background-color:#eef2ff; }
+.modal { transition: opacity 0.3s, transform 0.3s; }
+</style>
+</head>
+<body class="p-4 sm:p-6">
+<div class="container mx-auto">
+<header class="text-center mb-6">
+<h1 class="text-3xl font-bold text-indigo-600">Mi</h1>
+<p class="text-gray-500">Pengurusan Sempadan, Kumpulan & Item</p>
+</header>
+
+<!-- Buttons tambah & import/export -->
+<div class="flex flex-col sm:flex-row gap-3 mb-6">
+<button onclick="addSempadan()" class="bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700">+ Tambah Sempadan</button>
+<button onclick="exportData()" class="bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600">💾 Export JSON</button>
+<input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
+<button onclick="document.getElementById('importFile').click()" class="bg-teal-500 text-white py-2 px-4 rounded-lg hover:bg-teal-600">📂 Import JSON</button>
+</div>
+
+<div id="main" class="space-y-6"></div>
+
+<!-- Modal sunting link -->
+<div id="linkModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 pointer-events-none p-4 z-50">
+  <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm transform scale-95 transition-all">
+    <h3 class="text-xl font-bold mb-3 text-gray-800">Sunting Link</h3>
+    <input type="url" id="linkInput" placeholder="Masukkan URL" class="w-full p-3 border rounded mb-4">
+    <div class="flex justify-end gap-3">
+      <button onclick="hideLinkModal()" class="bg-gray-200 text-gray-700 py-2 px-4 rounded hover:bg-gray-300">Batal</button>
+      <button id="saveLinkBtn" onclick="saveLink()" class="bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Data
+const DATA_KEY = 'miData';
+let data = [];
+let editLinkContext = null;
+
+function saveData() { localStorage.setItem(DATA_KEY, JSON.stringify(data)); }
+function loadData() {
+    const stored = localStorage.getItem(DATA_KEY);
+    data = stored ? JSON.parse(stored) : [];
+    renderApp();
+}
+
+// Render
+function renderApp() {
+    const main = document.getElementById('main');
+    main.innerHTML = '';
+    if(data.length===0) {
+        main.innerHTML='<p class="text-gray-500">Tiada Sempadan. Tekan "+ Tambah Sempadan".</p>';
+        return;
+    }
+    data.forEach(s => {
+        const sDiv = document.createElement('div');
+        sDiv.className='bg-white p-4 rounded-xl shadow';
+        sDiv.innerHTML=`
+        <div class="flex justify-between items-center mb-3">
+            <h2 contenteditable="true" onblur="updateTitle('${s.id}','sempadan',this.innerText)" class="editable text-xl font-bold text-indigo-600">${s.title}</h2>
+            <button onclick="deleteSempadan('${s.id}')" class="text-red-500 hover:text-red-700">🗑</button>
+        </div>
+        <div id="groups-${s.id}" class="space-y-3"></div>
+        <button onclick="addGroup('${s.id}')" class="mt-2 bg-blue-500 text-white py-1 px-3 rounded hover:bg-blue-600 text-sm">+ Tambah Kumpulan</button>
+        `;
+        main.appendChild(sDiv);
+        const gDiv = sDiv.querySelector(`#groups-${s.id}`);
+        s.groups.forEach(g=>{
+            const gElem = document.createElement('div');
+            gElem.className='bg-gray-50 p-3 rounded shadow-inner';
+            gElem.innerHTML=`
+            <div class="flex justify-between items-center mb-2">
+                <h3 contenteditable="true" onblur="updateTitle('${s.id}','group',this.innerText,'${g.id}')" class="editable font-semibold">${g.title}</h3>
+                <div class="flex gap-2">
+                    <button onclick="deleteGroup('${s.id}','${g.id}')" class="text-red-500 hover:text-red-700">🗑</button>
+                    <button onclick="addItem('${s.id}','${g.id}')" class="text-green-500 hover:text-green-700">+ Item</button>
+                </div>
+            </div>
+            <div id="items-${g.id}" class="space-y-2"></div>
+            `;
+            gDiv.appendChild(gElem);
+            const iDiv = gElem.querySelector(`#items-${g.id}`);
+            g.items.forEach(i=>{
+                const doneText = i.completed ? '<p class="text-sm text-green-600">aktiviti ini telah dilakukan</p>' : '';
+                const itemEl = document.createElement('div');
+                itemEl.className='flex items-center justify-between bg-white p-2 rounded shadow-sm';
+                itemEl.innerHTML=`
+                <span contenteditable="true" onblur="updateTitle('${s.id}','item',this.innerText,'${g.id}','${i.id}')" class="editable">${i.title}</span>
+                <div class="flex gap-1">
+                    <button onclick="gotoLink('${i.link}')" class="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600">GO</button>
+                    <button onclick="editLink('${s.id}','${g.id}','${i.id}')" class="bg-yellow-400 text-white px-2 py-1 rounded hover:bg-yellow-500">⚙️</button>
+                    <button onclick="toggleDone('${s.id}','${g.id}','${i.id}')" class="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600">✓</button>
+                    <button onclick="deleteItem('${s.id}','${g.id}','${i.id}')" class="text-red-500 hover:text-red-700">🗑</button>
+                </div>
+                ${doneText}
+                `;
+                iDiv.appendChild(itemEl);
+            });
+        });
+    });
+}
+
+// CRUD
+function generateId(){ return Date.now().toString(36)+Math.random().toString(36).substr(2,5); }
+function addSempadan(){ data.unshift({id:generateId(),title:'Sempadan Baharu',groups:[]}); saveData(); renderApp(); }
+function deleteSempadan(id){ data=data.filter(s=>s.id!==id); saveData(); renderApp(); }
+function addGroup(sid){ const s=data.find(s=>s.id===sid); if(s){s.groups.unshift({id:generateId(),title:'Kumpulan Baharu',items:[]}); saveData(); renderApp();} }
+function deleteGroup(sid,gid){ const s=data.find(s=>s.id===sid); if(s){s.groups=s.groups.filter(g=>g.id!==gid); saveData(); renderApp();} }
+function addItem(sid,gid){ const g=data.find(s=>s.id===sid).groups.find(g=>g.id===gid); if(g){g.items.unshift({id:generateId(),title:'Item Baharu',link:'',completed:false}); saveData(); renderApp();} }
+function deleteItem(sid,gid,iid){ const g=data.find(s=>s.id===sid).groups.find(g=>g.id===gid); if(g){g.items=g.items.filter(i=>i.id!==iid); saveData(); renderApp();} }
+function updateTitle(sid,type,newText,gid,iid){
+    newText=newText.trim()||type;
+    const s=data.find(s=>s.id===sid);
+    if(type==='sempadan'){ s.title=newText; }
+    if(type==='group'){ const g=s.groups.find(g=>g.id===gid); g.title=newText; }
+    if(type==='item'){ const g=s.groups.find(g=>g.id===gid); const i=g.items.find(i=>i.id===iid); i.title=newText; }
+    saveData(); renderApp();
+}
+
+// Link
+function editLink(sid,gid,iid){
+    const g=data.find(s=>s.id===sid).groups.find(g=>g.id===gid);
+    const i=g.items.find(i=>i.id===iid);
+    editLinkContext={sid,gid,iid};
+    document.getElementById('linkInput').value=i.link||'';
+    document.getElementById('linkModal').classList.add('opacity-100','pointer-events-auto');
+    document.getElementById('linkModal').querySelector('div').classList.remove('scale-95'); document.getElementById('linkModal').querySelector('div').classList.add('scale-100');
+}
+function hideLinkModal(){ document.getElementById('linkModal').classList.remove('opacity-100','pointer-events-auto'); document.getElementById('linkModal').querySelector('div').classList.remove('scale-100'); document.getElementById('linkModal').querySelector('div').classList.add('scale-95'); }
+function saveLink(){ const val=document.getElementById('linkInput').value.trim(); const {sid,gid,iid}=editLinkContext; const g=data.find(s=>s.id===sid).groups.find(g=>g.id===gid); const i=g.items.find(i=>i.id===iid); i.link=val.startsWith('http')?val:'https://'+val; saveData(); renderApp(); hideLinkModal(); }
+function gotoLink(url){ if(url) window.open(url,'_blank'); else alert('Tiada link ditetapkan'); }
+
+// Done tick
+function toggleDone(sid,gid,iid){ const g=data.find(s=>s.id===sid).groups.find(g=>g.id===gid); const i=g.items.find(i=>i.id===iid); i.completed=!i.completed; saveData(); renderApp(); }
+
+// Import/Export
+function exportData(){ const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='mi_export.json'; a.click(); URL.revokeObjectURL(a.href);}
+function importData(e){ const file=e.target.files[0]; if(!file) return; const r=new FileReader(); r.onload=function(ev){ try{ const imported=JSON.parse(ev.target.result); if(Array.isArray(imported)){ data=imported; saveData(); renderApp(); }else alert('Format fail salah'); }catch(err){ alert('Fail import tidak sah'); } }; r.readAsText(file); e.target.value=null; }
+
+// Service Worker
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>{ navigator.serviceWorker.register('./sw.js').then(()=>console.log('SW registered')).catch(console.error); }); }
+
+window.onload=loadData;
+</script>
+</div>
+</body>
+</html>
