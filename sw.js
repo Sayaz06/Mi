@@ -1,10 +1,10 @@
-const CACHE_NAME = 'mi-cache-v1';
+const CACHE_NAME = 'mi-cache-v2';
 const FILES_TO_CACHE = [
     './',
     './index.html',
     './manifest.json',
-    './icon-192.png',
-    './icon-512.png'
+    './iconLink-192.png',
+    './iconLink-512.png'
 ];
 
 // Install
@@ -34,3 +34,4 @@ self.addEventListener('fetch', evt => {
         }))
     );
 });
+
