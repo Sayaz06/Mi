@@ -117,30 +117,16 @@ function renderApp() {
 
 // CRUD
 function generateId(){ return Date.now().toString(36)+Math.random().toString(36).substr(2,5); }
-function addSempadan(){ data.unshift({id:generateId(),title:'Sempadan Baharu',groups:[]}); saveData(); renderApp(); }
+function addSempadan(){ data.push({id:generateId(),title:'Sempadan Baharu',groups:[]}); saveData(); renderApp(); }
 function deleteSempadan(id){ data=data.filter(s=>s.id!==id); saveData(); renderApp(); }
-function addGroup(sid){ const s=data.find(s=>s.id===sid); if(s){s.groups.unshift({id:generateId(),title:'Kumpulan Baharu',items:[]}); saveData(); renderApp();} }
+function addGroup(sid){ const s=data.find(s=>s.id===sid); if(s){s.groups.push({id:generateId(),title:'Kumpulan Baharu',items:[]}); saveData(); renderApp();} }
 function deleteGroup(sid,gid){ const s=data.find(s=>s.id===sid); if(s){s.groups=s.groups.filter(g=>g.id!==gid); saveData(); renderApp();} }
-function addItem(sid,gid){ const g=data.find(s=>s.id===sid).groups.find(g=>g.id===gid); if(g){g.items.unshift({id:generateId(),title:'Item Baharu',link:'',completed:false}); saveData(); renderApp();} }
+function addItem(sid,gid){ const g=data.find(s=>s.id===sid).groups.find(g=>g.id===gid); if(g){g.items.push({id:generateId(),title:'Item Baharu',link:'',completed:false}); saveData(); renderApp();} }
 function deleteItem(sid,gid,iid){ const g=data.find(s=>s.id===sid).groups.find(g=>g.id===gid); if(g){g.items=g.items.filter(i=>i.id!==iid); saveData(); renderApp();} }
-function updateTitle(sid,type,newText,gid,iid){
-    newText=newText.trim()||type;
-    const s=data.find(s=>s.id===sid);
-    if(type==='sempadan'){ s.title=newText; }
-    if(type==='group'){ const g=s.groups.find(g=>g.id===gid); g.title=newText; }
-    if(type==='item'){ const g=s.groups.find(g=>g.id===gid); const i=g.items.find(i=>i.id===iid); i.title=newText; }
-    saveData(); renderApp();
-}
+function updateTitle(sid,type,newText,gid,iid){ newText=newText.trim()||type; const s=data.find(s=>s.id===sid); if(type==='sempadan'){ s.title=newText; } if(type==='group'){ const g=s.groups.find(g=>g.id===gid); g.title=newText; } if(type==='item'){ const g=s.groups.find(g=>g.id===gid); const i=g.items.find(i=>i.id===iid); i.title=newText; } saveData(); renderApp(); }
 
 // Link
-function editLink(sid,gid,iid){
-    const g=data.find(s=>s.id===sid).groups.find(g=>g.id===gid);
-    const i=g.items.find(i=>i.id===iid);
-    editLinkContext={sid,gid,iid};
-    document.getElementById('linkInput').value=i.link||'';
-    document.getElementById('linkModal').classList.add('opacity-100','pointer-events-auto');
-    document.getElementById('linkModal').querySelector('div').classList.remove('scale-95'); document.getElementById('linkModal').querySelector('div').classList.add('scale-100');
-}
+function editLink(sid,gid,iid){ const g=data.find(s=>s.id===sid).groups.find(g=>g.id===gid); const i=g.items.find(i=>i.id===iid); editLinkContext={sid,gid,iid}; document.getElementById('linkInput').value=i.link||''; document.getElementById('linkModal').classList.add('opacity-100','pointer-events-auto'); document.getElementById('linkModal').querySelector('div').classList.remove('scale-95'); document.getElementById('linkModal').querySelector('div').classList.add('scale-100'); }
 function hideLinkModal(){ document.getElementById('linkModal').classList.remove('opacity-100','pointer-events-auto'); document.getElementById('linkModal').querySelector('div').classList.remove('scale-100'); document.getElementById('linkModal').querySelector('div').classList.add('scale-95'); }
 function saveLink(){ const val=document.getElementById('linkInput').value.trim(); const {sid,gid,iid}=editLinkContext; const g=data.find(s=>s.id===sid).groups.find(g=>g.id===gid); const i=g.items.find(i=>i.id===iid); i.link=val.startsWith('http')?val:'https://'+val; saveData(); renderApp(); hideLinkModal(); }
 function gotoLink(url){ if(url) window.open(url,'_blank'); else alert('Tiada link ditetapkan'); }
@@ -160,4 +146,3 @@ window.onload=loadData;
 </div>
 </body>
 </html>
-
